@@ -4,7 +4,11 @@ import subprocess
 
 
 class UnityCLIError(RuntimeError):
-    """Unity CLI missing, timed out or returned an error."""
+    """Unity CLI unavailable or reported a failed operation."""
+
+    def __init__(self, message, code=None):
+        super().__init__(message)
+        self.code = code
 
 
 class UnityCLI:
@@ -30,12 +34,28 @@ class UnityCLI:
                                  timeout=self.timeout, check=False)
         except (OSError, subprocess.TimeoutExpired) as exc:
             raise UnityCLIError(f"Unity CLI unavailable: {type(exc).__name__}") from exc
+        try:
+            parsed = json.loads(result.stdout)
+        except (ValueError, TypeError) as exc:
+            raise UnityCLIError(
+                f"Unity CLI {command} returned invalid JSON (exit {result.returncode})"
+            ) from exc
+        if not isinstance(parsed, (dict, list)):
+            raise UnityCLIError("Unity CLI JSON response must be an object or list")
+        if isinstance(parsed, dict) and "success" in parsed:
+            if parsed["success"] is False:
+                errors = parsed.get("errors")
+                first = errors[0] if isinstance(errors, list) and errors else {}
+                code = first.get("code") if isinstance(first, dict) else None
+                raise UnityCLIError(
+                    f"Unity CLI {command} reported {code or 'UNKNOWN_ERROR'} "
+                    f"(exit {result.returncode})", code=code
+                )
+            if parsed["success"] is not True:
+                raise UnityCLIError("Unity CLI JSON success must be a boolean")
         if result.returncode:
             raise UnityCLIError(f"Unity CLI {command} exited with {result.returncode}")
-        try:
-            return json.loads(result.stdout)
-        except (ValueError, TypeError) as exc:
-            raise UnityCLIError("Unity CLI did not return JSON") from exc
+        return parsed
 
     def status(self):
         return self.query("status")
