@@ -1,34 +1,24 @@
-# REPLACE_LIB_TITLE
+# lib-unity
 
-**Rodzaj:** `lib-*` · **Etap:** scaffold · **API:** eksperymentalne, niewydane.  
-**Autor podstawowy:** Mateusz Pomianek; opcjonalni współautorzy po potwierdzeniu wkładu.
+Biblioteka Python do odczytywania stanu podłączonego edytora i listy narzędzi poprzez **oficjalne Unity CLI**. Wersja rozwojowa, bez wydania i bez zależności od dostawcy LLM.
 
-Repozytorium definiuje jeden komponent wielokrotnego użytku, z jawnie wersjonowanym kontraktem.
-Warto tworzyć osobną bibliotekę dopiero, gdy istnieje rzeczywiste współużycie albo niezależny cykl życia i wersjonowania.
+## Zakres wersji rozwojowej
 
-## Publiczny interfejs
+Adapter udostępnia wyłącznie trzy polecenia: `unity status --format json`, `unity list --format json`, `unity commands --format json`. Nie wywołuje `unity command`, `unity eval` ani mutacji zasobów. Wywołania używają tablicy argumentów bez shell, timeoutu i walidacji JSON.
 
-[docs/contracts.md](docs/contracts.md), [contracts/api.json](contracts/api.json).
+## Instalacja i użycie
 
-## Zależności i kompatybilność
-
-[docs/compatibility.md](docs/compatibility.md), [docs/consumers.md](docs/consumers.md).
-
-## Walidacja szkieletu
+Zainstaluj [Unity CLI](https://docs.unity.com/en-us/unity-cli), a dla sterowania pracującym edytorem zainstaluj Unity Pipeline (Unity 6.0 LTS+). Python 3.11+:
 
 ```bash
-python scripts/validate_repository.py --phase scaffold
-python scripts/validate_documentation.py
-python scripts/validate_pages.py
+python -m pip install -e .
+python -m lib_unity status
+python -m lib_unity list
 python -m unittest discover -s tests -v
 ```
 
-Zacznij od [TEMPLATE_SETUP.md](TEMPLATE_SETUP.md). GitHub Packages jest opcjonalnym kanałem zależnym od ekosystemu.
+Lista poleceń dostępnych w danej wersji CLI jest dynamiczna. Unity CLI obsługuje także `unity mcp` dla klientów MCP. Nie jest to część niniejszej biblioteki rozwojowej.
 
-## Audyt i kontrole jakości
+## Bezpieczeństwo i status
 
-Zobacz [audyt szablonu z 2026-11-19](reviews/2026-11-19-template-audit.md) i plan działań P0–P2. Publiczne repozytoria mogą korzystać z GitHub-hosted runners. Szablon zawiera minimalny [workflow Scaffold CI](.github/workflows/ci.yml) z walidacją metadanych i testami regresyjnymi; nie buduje ani nie publikuje pakietów.
-
-## Architektura i bezpieczeństwo
-
-[Architektura](ARCHITECTURE.md), [ADR](docs/adr/README.md), [model zagrożeń](docs/security/threat-model.md), [łańcuch dostaw](docs/security/supply-chain.md), [zarządzanie](GOVERNANCE.md) i [limity dokumentacji](docs/documentation.md). Publiczna dokumentacja API korzysta tylko z `pages/` ([Pages](docs/pages.md)); `docs/` pozostaje wewnętrzne. [Wydania LIB](docs/releases.md) wymagają osobnej autoryzacji.
+Biblioteka nie instaluje oprogramowania i nie wykonuje arbitralnych poleceń. Integracja z aktywnym Unity, OpenXR, Quest 3 i Android: **NOT_RUN**. [Kontrakt](contracts/api.json) · [Architektura](ARCHITECTURE.md) · [Licencja](LICENSE).
