@@ -38,6 +38,39 @@ class UnityClientTests(unittest.TestCase):
         with self.assertRaises(UnityCLIError):
             client.status()
 
+    def test_failed_json_envelope_exposes_stable_error_code(self):
+        payload = {"success": False, "errors": [
+            {"code": "STATUS_NO_INSTANCES", "message": "No active Editor"}]}
+        client = UnityCLI(runner=lambda *a, **k: SimpleNamespace(
+            returncode=12, stdout=json.dumps(payload)))
+        with self.assertRaises(UnityCLIError) as caught:
+            client.status()
+        self.assertEqual(caught.exception.code, "STATUS_NO_INSTANCES")
+
+    def test_failed_envelope_does_not_report_pass_on_exit_zero(self):
+        client = UnityCLI(runner=lambda *a, **k: SimpleNamespace(
+            returncode=0, stdout='{"success": false, "errors": []}'))
+        with self.assertRaises(UnityCLIError):
+            client.tools()
+
+    def test_successful_json_envelope_preserved(self):
+        payload = {"success": True, "command": "status", "data": {"editors": []}}
+        client = UnityCLI(runner=lambda *a, **k: SimpleNamespace(
+            returncode=0, stdout=json.dumps(payload)))
+        self.assertEqual(client.status(), payload)
+
+    def test_invalid_success_type_rejected(self):
+        client = UnityCLI(runner=lambda *a, **k: SimpleNamespace(
+            returncode=0, stdout='{"success": "false"}'))
+        with self.assertRaises(UnityCLIError):
+            client.commands()
+
+    def test_nonzero_exit_even_when_envelope_success(self):
+        client = UnityCLI(runner=lambda *a, **k: SimpleNamespace(
+            returncode=6, stdout='{"success": true, "data": {}}'))
+        with self.assertRaises(UnityCLIError):
+            client.status()
+
     def test_missing_binary(self):
         def missing(*args, **kwargs):
             raise FileNotFoundError("unity")
