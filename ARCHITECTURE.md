@@ -1,7 +1,26 @@
 # Architektura lib-unity
 
-`src/lib_unity/client.py` uruchamia wybrane polecenia odczytowe oficjalnego Unity CLI przez `subprocess.run` bez powłoki. CLI jest źródłem prawdy o podłączonych edytorach i narzędziach. Adapter nie implementuje drugiego serwera MCP ani własnej infrastruktury kolejkowej.
+`src/lib_unity/client.py` uruchamia odczytowe polecenia
+oficjalnego Unity CLI bez powłoki. Nie implementuje własnego
+serwera MCP, schedulerów ani operacji zmieniających projekt.
 
-Wejście: lokalna ścieżka do wykonywalnego `unity`, nazwa dozwolonego polecenia. Wyjście: sparsowany JSON z CLI. Ochrona: allowlist `status/list/commands`, limit czasu 15 s, brak mutacji. Zweryfikowane offline błędy: brak binarki, timeout, niezerowy exit code, nieprawidłowy JSON.
+**Wejście:** zaufana lokalna binarka `unity` i polecenie
+z allowlisty `status/list/commands`. **Wyjście:** sparsowany
+JSON (obiekt lub lista), maksymalnie 1 MiB surowego stdout.
+Adapter wywołuje lokalny proces z uprawnieniami konsumenta,
+z timeoutem 15 sekund domyślnie (maksymalnie 60 sekund).
+Nie jest sandboxem dla podmienionej binarki lub niepewnego PATH.
 
-Kolejny etap: adapter write z listą dozwolonych komend, potwierdzaniem projektu, suchym przebiegiem i audytem Research Autopilot. Nie wykonywać automatycznie `eval` ani arbitralnych skryptów otrzymanych od modelu.
+**Kontrole offline:** odmowa komend mutujących i niepoprawnych
+typów, limit wielkości odpowiedzi, timeout, brak binarki,
+niezerowy exit code, niepoprawny JSON i envelope `success/errors`.
+Wynik jest zwracany w pamięci bez zapisu i bez automatycznej
+transmisji. Konsument odpowiada za prywatność i retencję
+metadanych edytora.
+
+**Stan:** adapter read-only zaimplementowany; rzeczywiste
+Unity CLI, Unity Editor i Unity Pipeline E2E **NOT_RUN**.
+Dokumenty: [granice zaufania](docs/security/threat-model.md),
+[przepływ danych](docs/architecture/data-flow.md).
+Operacje write, `eval` i mutacje należą do odrębnego etapu,
+wymagają zatwierdzenia i nie są elementem tego PR.
