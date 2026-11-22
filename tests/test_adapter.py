@@ -1,10 +1,12 @@
 """Offline Unity CLI adapter tests. Never run a real Editor."""
+import io
 import json
 import subprocess
 import sys
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from unittest import mock
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from lib_unity.client import UnityCLI, UnityCLIError
 
@@ -88,6 +90,52 @@ class UnityClientTests(unittest.TestCase):
             returncode=0, stdout="not json"))
         with self.assertRaises(UnityCLIError):
             client.tools()
+
+
+    def test_unhashable_and_nonstring_commands_are_rejected(self):
+        client = UnityCLI(runner=lambda *a, **k: self.fail("runner invoked"))
+        for command in ([], {}, None, 3, True):
+            with self.subTest(command=repr(command)), self.assertRaises(ValueError):
+                client.query(command)
+
+    def test_injected_runner_oversized_output_is_rejected(self):
+        client = UnityCLI(runner=lambda *a, **k: SimpleNamespace(
+            returncode=0, stdout="x" * (UnityCLI.MAX_OUTPUT_BYTES + 1)))
+        with self.assertRaisesRegex(UnityCLIError, "exceeds"):
+            client.status()
+
+    def test_bounded_subprocess_accepts_small_json(self):
+        process = mock.Mock()
+        process.stdout = io.BytesIO(b'{"editors":[]}')
+        process.poll.return_value = 0
+        process.wait.return_value = 0
+        process.returncode = 0
+        with mock.patch("lib_unity.client.subprocess.Popen", return_value=process) as popen:
+            self.assertEqual(UnityCLI().status(), {"editors": []})
+        self.assertFalse(popen.call_args.kwargs["shell"])
+        self.assertIs(popen.call_args.kwargs["stderr"], subprocess.DEVNULL)
+        self.assertEqual(popen.call_args.args[0], ["unity", "status", "--format", "json"])
+
+    def test_bounded_subprocess_rejects_oversized_stream(self):
+        process = mock.Mock()
+        process.stdout = io.BytesIO(b"x" * (UnityCLI.MAX_OUTPUT_BYTES + 1))
+        process.poll.return_value = None
+        process.wait.return_value = -9
+        process.returncode = -9
+        with mock.patch("lib_unity.client.subprocess.Popen", return_value=process):
+            with self.assertRaisesRegex(UnityCLIError, "exceeds"):
+                UnityCLI().status()
+        process.kill.assert_called()
+
+    def test_bounded_subprocess_rejects_invalid_utf8(self):
+        process = mock.Mock()
+        process.stdout = io.BytesIO(b"\\xff")
+        process.poll.return_value = 0
+        process.wait.return_value = 0
+        process.returncode = 0
+        with mock.patch("lib_unity.client.subprocess.Popen", return_value=process):
+            with self.assertRaises(UnityCLIError):
+                UnityCLI().status()
 
     def test_invalid_timeout(self):
         with self.assertRaises(ValueError):
