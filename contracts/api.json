@@ -1,11 +1,19 @@
 {
   "schema_version": 1,
-  "name": "REPLACE_PACKAGE_ID",
+  "name": "lib_unity",
   "api_version": "0.1.0",
   "stability": "experimental",
-  "public_entrypoints": [],
-  "serialization_contracts": [],
+  "public_entrypoints": [
+    "lib_unity.client.UnityCLI.status",
+    "lib_unity.client.UnityCLI.tools",
+    "lib_unity.client.UnityCLI.commands"
+  ],
+  "serialization_contracts": [
+    "JSON output; errors raise RuntimeError subclasses"
+  ],
   "breaking_change_policy": "major_version_with_migration_guide",
   "deprecation_policy": "documented_before_removal",
-  "runtime_requirements": []
+  "runtime_requirements": [
+    "Python >=3.11"
+  ]
 }

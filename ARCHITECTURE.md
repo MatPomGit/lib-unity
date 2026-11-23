@@ -1,19 +1,26 @@
-# Architektura biblioteki
+# Architektura lib-unity
 
-**Status:** szablon nie zawiera gotowego produktu. Identyfikatory i komponenty należy zdefiniować przed implementacją.
+`src/lib_unity/client.py` uruchamia odczytowe polecenia
+oficjalnego Unity CLI bez powłoki. Nie implementuje własnego
+serwera MCP, schedulerów ani operacji zmieniających projekt.
 
-- **Source of truth:** to repozytorium jest jedynym właścicielem kodu i publicznego kontraktu.
-- **Upstream:** zależności przypięte do wersji i SHA/digest; aktualność sprawdzana przez Research Autopilot.
-- **Downstream:** `msc-*` i inne narzędzia odwołują się do wydania lub ustalonego SHA, nie kopiują źródeł.
-- **Boundary:** adaptery sprzętowe, rendering i I/O oddzielone od logiki domenowej, gdy dotyczy.
-- **Reproduce:** zdefiniowany lockfile, wersje zależności i parametry.
-- **Audit live:** odczyt aktualnego HEAD i porównanie z przypiętym SHA. Zmiany via PR, bez cichego nadpisywania.
+**Wejście:** zaufana lokalna binarka `unity` i polecenie
+z allowlisty `status/list/commands`. **Wyjście:** sparsowany
+JSON (obiekt lub lista), maksymalnie 1 MiB surowego stdout.
+Adapter wywołuje lokalny proces z uprawnieniami konsumenta,
+z timeoutem 15 sekund domyślnie (maksymalnie 60 sekund).
+Nie jest sandboxem dla podmienionej binarki lub niepewnego PATH.
 
-Pełne kontrakty i macierz środowisk opisano w `docs/` i `config/component.json`.
+**Kontrole offline:** odmowa komend mutujących i niepoprawnych
+typów, limit wielkości odpowiedzi, timeout, brak binarki,
+niezerowy exit code, niepoprawny JSON i envelope `success/errors`.
+Wynik jest zwracany w pamięci bez zapisu i bez automatycznej
+transmisji. Konsument odpowiada za prywatność i retencję
+metadanych edytora.
 
-
-## Dokumentacja rozwijanej biblioteki
-
-Po powstaniu kodu opisz **realne** moduły, publiczne API, wersje ABI, granice I/O i adaptery w [components](docs/architecture/components.md), [data-flow](docs/architecture/data-flow.md) i [distribution](docs/architecture/distribution.md). [ADR](docs/adr/README.md) zapisują uzasadnienia decyzji, a [model zagrożeń](docs/security/threat-model.md) rzeczywiste ryzyka i dowody ich kontroli.
-
-Publikacja dokumentacji jako GitHub Pages korzysta **wyłącznie** z `pages/`, nigdy z `docs/` ([polityka](docs/pages.md)). Brak wdrożonej funkcji oznacza stan `NOT_IMPLEMENTED`, a nie domyślny `PASS`.
+**Stan:** adapter read-only zaimplementowany; rzeczywiste
+Unity CLI, Unity Editor i Unity Pipeline E2E **NOT_RUN**.
+Dokumenty: [granice zaufania](docs/security/threat-model.md),
+[przepływ danych](docs/architecture/data-flow.md).
+Operacje write, `eval` i mutacje należą do odrębnego etapu,
+wymagają zatwierdzenia i nie są elementem tego PR.
